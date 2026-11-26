@@ -4,6 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Kamali 2-Player Chess Arena</title>
+<script src="https://unpkg.com//peerjs@1.5.4/dist/peerjs.min.js"></script>
+
 <style>
   :root {
     --bg: #161512;
@@ -341,7 +343,8 @@
           <option value="beginner">Beginner</option>
           <option value="medium" selected>Medium</option>
           <option value="high">High Level</option>
-          <option value="local">2-Player Local</option>
+          <option value="local">2-Player Local</option><option value="online">Online 2-Player</option>
+
         </select>
 
           <select id="sideSelect">
@@ -349,9 +352,14 @@
             <option value="b">Play Black</option>
             <option value="rand">Random Color</option>
           </select>
+        </div><div id="onlineBar" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px;">
+          <button type="button" id="hostChessBtn" class="vcr-btn">Create Room</button>
+          <input type="text" id="chessCodeInput" placeholder="CODE" maxlength="4" style="width:68px;padding:4px;text-align:center;text-transform:uppercase;background:#161822;color:#ffca28;border:1px solid #555;border-radius:4px;">
+          <button type="button" id="joinChessBtn" class="vcr-btn">Join</button>
+          <span id="chessRoomStatus" style="font-size:12px;color:#4dd0e1;width:100%;"></span>
         </div>
         <div class="theme-row">
-          <span>Board Contrast:</span>
+          <span>Board Contrast:</span> 
           <div class="swatches" id="swatches"></div>
         </div>
       </div>
@@ -1030,7 +1038,74 @@ window.addEventListener('keydown', (e) => {
 });
 
 initSwatches();
-resetGame();
+resetGame();let chessPeer = null, chessConn = null;
+
+function makeChessCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from({ length: 4 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join("");
+}
+
+function bindChessConnection(conn) {
+  chessConn = conn;
+  document.getElementById('modeSelect').value = 'online';
+  if (typeof resetGame === 'function') resetGame();
+  else if (typeof newGame === 'function') newGame();
+
+  conn.on('data', (data) => {
+    if (data && data.type === 'move' && data.mv) {
+      makeMove(data.mv, true);
+    }
+  });
+  conn.on('close', () => {
+    document.getElementById('chessRoomStatus').textContent = 'Friend disconnected.';
+    chessConn = null;
+  });
+}
+
+const origMakeMove = makeMove;
+makeMove = function(mv, fromRemote = false) {
+  origMakeMove(mv);
+  const mode = document.getElementById('modeSelect').value;
+  if (mode === 'online' && !fromRemote && chessConn && chessConn.open) {
+    chessConn.send({ type: 'move', mv: mv });
+  }
+};
+
+document.getElementById('hostChessBtn').addEventListener('click', () => {
+  if (chessPeer) chessPeer.destroy();
+  const code = makeChessCode();
+  const status = document.getElementById('chessRoomStatus');
+  status.textContent = 'Creating room...';
+  chessPeer = new Peer('kamali-chess-' + code);
+  chessPeer.on('open', () => {
+    humanColor = 'w';
+    status.textContent = `Room Code: ${code} (You are WHITE - waiting...)`;
+  });
+  chessPeer.on('connection', (conn) => {
+    conn.on('open', () => {
+      status.textContent = `Connected! Room ${code} (You are WHITE)`;
+      bindChessConnection(conn);
+    });
+  });
+});
+
+document.getElementById('joinChessBtn').addEventListener('click', () => {
+  const code = document.getElementById('chessCodeInput').value.trim().toUpperCase();
+  const status = document.getElementById('chessRoomStatus');
+  if (code.length !== 4) { status.textContent = 'Enter 4-letter Room Code!'; return; }
+  if (chessPeer) chessPeer.destroy();
+  status.textContent = `Joining ${code}...`;
+  chessPeer = new Peer();
+  chessPeer.on('open', () => {
+    humanColor = 'b';
+    const conn = chessPeer.connect('kamali-chess-' + code);
+    conn.on('open', () => {
+      status.textContent = `Connected to ${code}! (You are BLACK)`;
+      bindChessConnection(conn);
+    });
+  });
+});
+
 </script>
 </body>
 </html>
