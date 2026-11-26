@@ -792,7 +792,7 @@ function minimaxSearch(st, depth, alpha, beta, maximizing) {
 
 function maybeTriggerAI() {
   const mode = document.getElementById('modeSelect').value;
-  if (mode === 'local') return;
+    if (mode === 'local' || mode === 'online') return;
   if (viewIndex !== history.length - 1) return;
   if (state.turn === humanColor) return;
   const legal = getAllLegalMoves(state, state.turn);
