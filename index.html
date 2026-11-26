@@ -1052,7 +1052,7 @@ function bindChessConnection(conn) {
   if (typeof resetGame === 'function') resetGame();
   else if (typeof newGame === 'function') newGame();
   humanColor = savedColor;
-  if (humanColor === 'b') { flipped = true; renderBoard();
+    if (humanColor === 'b') { flipped = true; renderBoard(); }
 
   conn.on('data', (data) => {
     if (data && data.type === 'move' && data.mv) {
