@@ -356,6 +356,7 @@
           <button type="button" id="hostChessBtn" class="vcr-btn">Create Room</button>
           <input type="text" id="chessCodeInput" placeholder="CODE" maxlength="4" style="width:68px;padding:4px;text-align:center;text-transform:uppercase;background:#161822;color:#ffca28;border:1px solid #555;border-radius:4px;">
           <button type="button" id="joinChessBtn" class="vcr-btn">Join</button>
+          <button type="button" id="copyInviteBtn" class="vcr-btn" style="display:none;background:#2e8b57;color:#fff;">Copy Invite</button>
           <span id="chessRoomStatus" style="font-size:12px;color:#4dd0e1;width:100%;"></span>
         </div>
         <div class="theme-row">
@@ -1076,7 +1077,8 @@ makeMove = function(mv, fromRemote = false) {
 
 document.getElementById('hostChessBtn').addEventListener('click', () => {
   if (chessPeer) chessPeer.destroy();
-  const code = makeChessCode();
+  const code = makeChessCode(); window.activeChessCode = code;
+  document.getElementById('copyInviteBtn').style.display = 'inline-block';
   const status = document.getElementById('chessRoomStatus');
   status.textContent = 'Creating room...';
   chessPeer = new Peer('kamali-chess-' + code);
@@ -1106,6 +1108,15 @@ document.getElementById('joinChessBtn').addEventListener('click', () => {
       status.textContent = `Connected to ${code}! (You are BLACK)`;
       bindChessConnection(conn);
     });
+  });
+});
+document.getElementById('copyInviteBtn').addEventListener('click', () => {
+  const code = window.activeChessCode || document.getElementById('chessCodeInput').value.trim().toUpperCase();
+  const msg = `Let's play Chess! Open ${window.location.href} , type ${code} into CODE, and click Join!`;
+  navigator.clipboard.writeText(msg).then(() => {
+    const btn = document.getElementById('copyInviteBtn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy Invite'; }, 2000);
   });
 });
 
