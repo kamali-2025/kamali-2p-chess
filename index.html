@@ -337,11 +337,13 @@
 
       <div class="controls-bar">
         <div class="select-row">
-          <select id="modeSelect">
-            <option value="tactical">Tactical AI</option>
-            <option value="casual">Casual AI</option>
-            <option value="local">2-Player Local</option>
-          </select>
+        <select id="modeSelect">
+          <option value="beginner">Beginner</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High Level</option>
+          <option value="local">2-Player Local</option>
+        </select>
+
           <select id="sideSelect">
             <option value="w">Play White</option>
             <option value="b">Play Black</option>
@@ -751,6 +753,35 @@ function evalBoard(board) {
   return score;
 }
 
+function minimaxSearch(st, depth, alpha, beta, maximizing) {
+  const moves = getAllLegalMoves(st, st.turn);
+  if (moves.length === 0) {
+    if (inCheck(st.board, st.turn)) return maximizing ? -99999 - depth : 99999 + depth;
+    return 0;
+  }
+  if (depth === 0) return evalBoard(st.board);
+
+  if (maximizing) {
+    let best = -Infinity;
+    for (const mv of moves) {
+      const next = applyMoveRaw(st, mv);
+      best = Math.max(best, minimaxSearch(next, depth - 1, alpha, beta, false));
+      alpha = Math.max(alpha, best);
+      if (beta <= alpha) break;
+    }
+    return best;
+  } else {
+    let best = Infinity;
+    for (const mv of moves) {
+      const next = applyMoveRaw(st, mv);
+      best = Math.min(best, minimaxSearch(next, depth - 1, alpha, beta, true));
+      beta = Math.min(beta, best);
+      if (beta <= alpha) break;
+    }
+    return best;
+  }
+}
+
 function maybeTriggerAI() {
   const mode = document.getElementById('modeSelect').value;
   if (mode === 'local') return;
@@ -763,26 +794,19 @@ function maybeTriggerAI() {
   setTimeout(() => {
     const moves = getAllLegalMoves(state, state.turn);
     if (!moves.length) { aiThinking = false; return; }
-    let chosen = moves[Math.floor(Math.random() * moves.length)];
-    if (mode === 'tactical') {
+    moves.sort(() => Math.random() - 0.5);
+    let chosen = moves.at(0);
+
+    if (mode === 'beginner' && Math.random() < 0.65) {
+      chosen = moves[Math.floor(Math.random() * moves.length)];
+    } else {
+      const depth = mode === 'high' ? 3 : (mode === 'medium' ? 2 : 1);
       const maximizing = (state.turn === 'w');
       let bestScore = maximizing ? -Infinity : Infinity;
       for (const mv of moves) {
         const s1 = applyMoveRaw(state, mv);
-        const replies = getAllLegalMoves(s1, s1.turn);
-        let sc = evalBoard(s1.board);
-        if (replies.length > 0) {
-          let worstReply = maximizing ? Infinity : -Infinity;
-          for (const rep of replies) {
-            const s2 = applyMoveRaw(s1, rep);
-            const e2 = evalBoard(s2.board);
-            worstReply = maximizing ? Math.min(worstReply, e2) : Math.max(worstReply, e2);
-          }
-          sc = worstReply;
-        } else if (inCheck(s1.board, s1.turn)) {
-          sc = maximizing ? 99999 : -99999;
-        }
-        sc += (Math.random() - 0.5) * 8;
+        let sc = minimaxSearch(s1, depth - 1, -Infinity, Infinity, !maximizing);
+        sc += (Math.random() - 0.5) * (mode === 'high' ? 2 : 10);
         if ((maximizing && sc > bestScore) || (!maximizing && sc < bestScore)) {
           bestScore = sc;
           chosen = mv;
@@ -790,6 +814,7 @@ function maybeTriggerAI() {
       }
     }
     aiThinking = false;
+
     makeMove(chosen);
   }, 260);
 }
