@@ -1047,9 +1047,12 @@ function makeChessCode() {
 
 function bindChessConnection(conn) {
   chessConn = conn;
+  const savedColor = humanColor;
   document.getElementById('modeSelect').value = 'online';
   if (typeof resetGame === 'function') resetGame();
   else if (typeof newGame === 'function') newGame();
+  humanColor = savedColor;
+  if (humanColor === 'b') { flipped = true; render(); }
 
   conn.on('data', (data) => {
     if (data && data.type === 'move' && data.mv) {
